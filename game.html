@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flappy Shadow</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            border: 2px solid #ff0000;
+            background: linear-gradient(to bottom, #000000, #1a0f0f);
+        }
+        #score {
+            position: fixed;
+            top: 20px;
+            color: #ff0000;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        const player = {
+            x: 50,
+            y: canvas.height / 2,
+            velocity: 0,
+            width: 40,
+            height: 40
+        };
+
+        const gravity = 0.5;
+        const jump = -8; // Reduced jump height by 20%
+        const pipeWidth = 60;
+        const pipeGap = 150;
+        let pipes = [];
+        let score = 0;
+        let gameOver = false;
+        let gameSpeed = 4; // Starting speed doubled from 2 to 4
+
+        // Load player image
+        // Load all images
+        const playerImg = new Image();
+        const solanaImg = new Image();
+        const bitcoinImg = new Image();
+        solanaImg.src = 'solana.png';
+        bitcoinImg.src = 'bitcoin.png';
+        playerImg.src = 'shadow.png';
+
+        function createPipe() {
+            const gapY = Math.random() * (canvas.height - pipeGap - 100) + 50;
+            pipes.push({
+                x: canvas.width,
+                gapY: gapY,
+                passed: false
+            });
+        }
+
+        function drawPipe(pipe) {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(pipe.x, 0, pipeWidth, pipe.gapY);
+            ctx.fillRect(pipe.x, pipe.gapY + pipeGap, pipeWidth, canvas.height);
+            
+            // Draw crypto logos on pipes
+            ctx.drawImage(solanaImg, pipe.x + 10, pipe.gapY - 40, 40, 40);
+            ctx.drawImage(bitcoinImg, pipe.x + 10, pipe.gapY + pipeGap, 40, 40);
+        }
+
+        function checkCollision(pipe) {
+            return (player.x + player.width > pipe.x && 
+                    player.x < pipe.x + pipeWidth && 
+                    (player.y < pipe.gapY || 
+                     player.y + player.height > pipe.gapY + pipeGap));
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            // Update player
+            player.velocity += gravity;
+            player.y += player.velocity;
+
+            // Generate pipes
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 260) { // Increased spacing by 30%
+                createPipe();
+            }
+
+            // Update pipes
+            pipes = pipes.filter(pipe => {
+                pipe.x -= gameSpeed;
+                
+                // Score counting
+                if (!pipe.passed && pipe.x + pipeWidth < player.x) {
+                    pipe.passed = true;
+                    score++;
+                    scoreElement.textContent = `Score: ${score}`;
+                    gameSpeed *= 1.05; // Increase speed by 5%
+                }
+
+                // Check collisions
+                if (checkCollision(pipe)) {
+                    gameOver = true;
+                }
+
+                return pipe.x > -pipeWidth;
+            });
+
+            // Check boundaries
+            if (player.y < 0 || player.y + player.height > canvas.height) {
+                gameOver = true;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw player with white border
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(player.x, player.y, player.width, player.height);
+            ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+            // Draw pipes
+            pipes.forEach(drawPipe);
+
+            if (gameOver) {
+                ctx.fillStyle = '#ff0000';
+                ctx.font = '48px Arial';
+                ctx.fillText('Game Over!', canvas.width/2 - 100, canvas.height/2);
+                ctx.font = '24px Arial';
+                ctx.fillText('Click to restart', canvas.width/2 - 70, canvas.height/2 + 40);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function handleClick() {
+            if (gameOver) {
+                // Reset game
+                player.y = canvas.height / 2;
+                player.velocity = 0;
+                pipes = [];
+                score = 0;
+                scoreElement.textContent = 'Score: 0';
+                gameOver = false;
+                gameSpeed = 4; // Reset speed
+            } else {
+                // Jump
+                player.velocity = jump;
+            }
+        }
+
+        canvas.addEventListener('click', handleClick);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') handleClick();
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
